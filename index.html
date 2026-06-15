@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WNY Cafe Management System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4A90E2; --success: #2ecc71; --danger: #e74c3c; --warning: #f1c40f;
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Sarabun', sans-serif; }
+        body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height: 100vh; overflow-x: hidden; }
+        
+        /* Navbar */
+        .navbar {
+            background: var(--glass-bg); backdrop-filter: blur(10px);
+            padding: 15px 20px; display: flex; justify-content: space-between;
+            align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .nav-links button {
+            background: none; border: none; font-size: 16px; font-weight: 600;
+            margin-left: 15px; cursor: pointer; color: #333; padding: 5px 10px;
+            border-radius: 8px; transition: 0.3s;
+        }
+        .nav-links button.active { background: var(--primary); color: white; }
+
+        /* App Container */
+        .app-container { padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .view-section { display: none; animation: fadeIn 0.3s ease; }
+        .view-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Glass Card */
+        .glass-card {
+            background: var(--glass-bg); backdrop-filter: blur(10px);
+            border-radius: 20px; border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow); padding: 20px; margin-bottom: 20px;
+        }
+
+        /* POS Grid System */
+        .pos-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        .product-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px;
+            max-height: 70vh; overflow-y: auto; padding-right: 5px;
+        }
+        .product-card {
+            background: white; border-radius: 15px; padding: 10px; text-align: center;
+            cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .product-card:active { transform: scale(0.95); }
+        .product-card img {
+            width: 100%; height: 100px; object-fit: cover; border-radius: 10px; margin-bottom: 10px;
+        }
+        .product-title { font-weight: 600; font-size: 14px; color: #333; }
+        .product-price { color: var(--primary); font-weight: bold; }
+
+        /* Cart Area */
+        .cart-area { background: white; border-radius: 20px; padding: 20px; display: flex; flex-direction: column; height: 70vh; }
+        .cart-items { flex-grow: 1; overflow-y: auto; margin-bottom: 15px; border-bottom: 1px solid #eee; }
+        .cart-item { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
+        .cart-total { font-size: 24px; font-weight: bold; text-align: right; color: var(--primary); margin-bottom: 15px; }
+        .btn-checkout {
+            background: var(--success); color: white; border: none; padding: 15px;
+            border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%;
+        }
+
+        /* Forms & Inputs */
+        input, select {
+            width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd;
+            margin-bottom: 15px; font-family: 'Sarabun';
+        }
+        .btn { padding: 10px 15px; border-radius: 8px; border: none; cursor: pointer; color: white; font-weight: bold; }
+        .btn-primary { background: var(--primary); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .pos-layout { grid-template-columns: 1fr; }
+            .cart-area { height: auto; min-height: 300px; }
+            .product-grid { grid-template-columns: repeat(3, 1fr); }
+            .navbar { flex-direction: column; gap: 10px; }
+            .nav-links button { margin: 0 5px; font-size: 14px; }
+        }
+        @media (max-width: 480px) {
+            .product-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <h2><i class="fa-solid fa-mug-hot" style="color: var(--primary);"></i> WNY Cafe</h2>
+        <div class="nav-links">
+            <button class="active" onclick="switchView('pos')">หน้าร้าน (POS)</button>
+            <button onclick="switchView('kds')">จอคนชง (KDS)</button>
+            <button onclick="switchView('admin')">หลังบ้าน & บัญชี</button>
+        </div>
+    </nav>
+
+    <div class="app-container">
+        <section id="pos-view" class="view-section active">
+            <div class="pos-layout">
+                <div class="glass-card">
+                    <h3>เมนูเครื่องดื่ม</h3>
+                    <div class="product-grid" id="product-list">
+                        </div>
+                </div>
+                <div class="cart-area shadow">
+                    <h3>รายการสั่งซื้อ <span id="queue-display" style="float:right; color:#888;">คิว: A001</span></h3>
+                    <div class="cart-items" id="cart-items"></div>
+                    <div class="cart-total">รวม: ฿<span id="cart-total-price">0.00</span></div>
+                    <button class="btn-checkout" onclick="checkout()">ชำระเงิน & ปริ้นใบเสร็จ</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="kds-view" class="view-section">
+            <div class="glass-card">
+                <h2>รายการรอชง (KDS)</h2>
+                <div id="kds-list" style="margin-top: 15px;">
+                    <p style="color: #666;">กำลังรอรับออเดอร์...</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="admin-view" class="view-section">
+            <div class="glass-card">
+                <h2>เพิ่มเมนูสินค้า (พร้อมบีบอัดรูป Base64)</h2>
+                <div style="max-width: 400px; margin-top: 15px;">
+                    <input type="text" id="new-prod-name" placeholder="ชื่อเมนู">
+                    <input type="number" id="new-prod-price" placeholder="ราคา (บาท)">
+                    <input type="file" id="new-prod-image" accept="image/*">
+                    <img id="img-preview" style="max-width: 100px; display: none; border-radius: 8px; margin-bottom: 10px;">
+                    <button class="btn btn-primary" onclick="addProduct()">บันทึกเมนู</button>
+                </div>
+            </div>
+            
+            <div class="glass-card">
+                <h2>ทะเบียนคุมบัญชี (อ้างอิงจากระบบเดิม)</h2>
+                <p>ระบบบันทึกรายรับจะถูกดึงข้อมูลอัตโนมัติเมื่อมีการกดชำระเงินที่หน้า POS</p>
+                </div>
+        </section>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } 
+        from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCjfx3-S7HefQVcVT_XIaHktRqzHdzClis",
+            authDomain: "wnycafe.firebaseapp.com",
+            projectId: "wnycafe",
+            storageBucket: "wnycafe.firebasestorage.app",
+            messagingSenderId: "255695949182",
+            appId: "1:255695949182:web:dca0a0b884c4bfc8b5772f",
+            measurementId: "G-J04NHMYN8S"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const productsRef = collection(db, "products");
+        const ordersRef = collection(db, "orders");
+        const ledgerRef = collection(db, "ledger"); // เชื่อมกับบัญชี
+
+        // State Variables
+        let cart = [];
+        let base64Image = "";
+
+        // --- Navigation Logic ---
+        window.switchView = function(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-links button').forEach(el => el.classList.remove('active'));
+            document.getElementById(viewId + '-view').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // --- Image Compression & Base64 Converter ---
+        document.getElementById('new-prod-image').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    // สร้าง Canvas เพื่อลดขนาดรูปลง (จำกัดความกว้าง 300px เพื่อไม่ให้ฐานข้อมูลหนัก)
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 300;
+                    const scaleSize = MAX_WIDTH / img.width;
+                    canvas.width = MAX_WIDTH;
+                    canvas.height = img.height * scaleSize;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    // แปลงเป็น Base64 (คุณภาพ 0.7 = 70%)
+                    base64Image = canvas.toDataURL('image/jpeg', 0.7);
+                    
+                    const preview = document.getElementById('img-preview');
+                    preview.src = base64Image;
+                    preview.style.display = 'block';
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+        });
+
+        // --- Add Product to Firebase ---
+        window.addProduct = async function() {
+            const name = document.getElementById('new-prod-name').value;
+            const price = parseFloat(document.getElementById('new-prod-price').value);
+            
+            if(!name || !price || !base64Image) return alert("กรุณากรอกข้อมูลและอัปโหลดรูปภาพให้ครบ");
+
+            try {
+                await addDoc(productsRef, { name: name, price: price, image: base64Image, status: 'active' });
+                alert("เพิ่มเมนูสำเร็จ!");
+                document.getElementById('new-prod-name').value = '';
+                document.getElementById('new-prod-price').value = '';
+                document.getElementById('img-preview').style.display = 'none';
+                base64Image = "";
+            } catch (e) { console.error(e); alert("Error: " + e.message); }
+        }
+
+        // --- Load Products to POS ---
+        onSnapshot(productsRef, (snapshot) => {
+            const productList = document.getElementById('product-list');
+            productList.innerHTML = '';
+            snapshot.forEach((doc) => {
+                const p = doc.data();
+                productList.innerHTML += `
+                    <div class="product-card" onclick="addToCart('${p.name}', ${p.price})">
+                        <img src="${p.image}" alt="${p.name}">
+                        <div class="product-title">${p.name}</div>
+                        <div class="product-price">฿${p.price}</div>
+                    </div>
+                `;
+            });
+        });
+
+        // --- POS Cart Logic ---
+        window.addToCart = function(name, price) {
+            cart.push({ name, price });
+            updateCartUI();
+        }
+
+        function updateCartUI() {
+            const cartItemsDiv = document.getElementById('cart-items');
+            cartItemsDiv.innerHTML = '';
+            let total = 0;
+            cart.forEach((item, index) => {
+                total += item.price;
+                cartItemsDiv.innerHTML += `
+                    <div class="cart-item">
+                        <span>${item.name}</span>
+                        <span>฿${item.price} <i class="fa-solid fa-trash" style="color:red; cursor:pointer;" onclick="removeFromCart(${index})"></i></span>
+                    </div>
+                `;
+            });
+            document.getElementById('cart-total-price').innerText = total.toFixed(2);
+        }
+
+        window.removeFromCart = function(index) {
+            cart.splice(index, 1);
+            updateCartUI();
+        }
+
+        // --- Checkout & Sync to Ledger & KDS ---
+        window.checkout = async function() {
+            if(cart.length === 0) return alert("ไม่มีสินค้าในตะกร้า");
+            const total = cart.reduce((sum, item) => sum + item.price, 0);
+            
+            try {
+                // 1. ส่งออเดอร์ไป KDS
+                await addDoc(ordersRef, {
+                    items: cart, total: total, status: 'pending', timestamp: serverTimestamp(), queue: 'A001'
+                });
+
+                // 2. ส่งยอดเงินเข้าระบบบัญชี (Ledger) ทันที
+                await addDoc(ledgerRef, {
+                    date: serverTimestamp(), type: 'income', detail: 'ยอดขายหน้าร้าน (POS)', amount: total, method: 'cash'
+                });
+
+                alert("รับออเดอร์สำเร็จ!");
+                cart = []; updateCartUI();
+                // *ที่นี่สามารถเขียนโค้ด ePOS-Print API สำหรับปริ้นใบเสร็จต่อได้เลย*
+            } catch (e) { alert("Error: " + e.message); }
+        }
+
+        // --- KDS Real-time Listener ---
+        const qOrders = query(ordersRef, orderBy("timestamp", "desc"));
+        onSnapshot(qOrders, (snapshot) => {
+            const kdsList = document.getElementById('kds-list');
+            kdsList.innerHTML = '';
+            snapshot.forEach((doc) => {
+                const order = doc.data();
+                if(order.status === 'pending') {
+                    const itemsHtml = order.items.map(i => `<li>${i.name}</li>`).join('');
+                    kdsList.innerHTML += `
+                        <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid var(--warning);">
+                            <h4>คิว: ${order.queue}</h4>
+                            <ul>${itemsHtml}</ul>
+                            <button class="btn btn-primary" style="margin-top:10px; width:100%;">เสร็จสิ้น (เรียกคิว)</button>
+                        </div>
+                    `;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
